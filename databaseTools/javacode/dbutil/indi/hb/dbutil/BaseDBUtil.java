@@ -1,8 +1,11 @@
 package indi.hb.dbutil;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -13,22 +16,29 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * 数据库处理工具
  * @author wanghb
  */
 public abstract class BaseDBUtil {
-	/**数据库ip*/
-	String ip;
-	/**数据库端口*/
-	Integer port;
-	/**数据库名称*/
-	String dbname;
-	/**数据库用户名*/
-	String username;
-	/**数据库密码*/
-	String password;
+	/**
+	 * 驱动类名
+	 */
+	String driveClassName;
+	/**
+	 * 数据库url
+	 */
+	String dbURL;
+	/**
+	 * 数据库用户名
+	 */
+	String dbusername;
+	/**
+	 * 数据库密码
+	 */
+	String dbpassword;
 	/**
 	 * 参数对象
 	 * @author wanghb
@@ -121,17 +131,47 @@ public abstract class BaseDBUtil {
 	    }
 	}
 	/**
-	 * 连接到数据库并返回连接对象
-	 * @param ip 数据库地址ip
-	 * @param port 数据库端口
-	 * @param dbname 数据库服务名
-	 * @param username 用户名
-	 * @param password 密码
+	 * 获取数据库连接，需要
+	 * @param dbID
 	 * @return
-	 * @throws ClassNotFoundException 
-	 * @throws SQLException 
 	 */
-	public abstract Connection getConn() throws ClassNotFoundException, SQLException;
+	public Connection getConn(String dbID) {
+		loadProperties(dbID);
+		return getConn();
+	};
+	/**
+	 * 加载数据库参数文件
+	 * @param dbID 数据库连接标识
+	 */
+	void loadProperties(String dbID) {
+		InputStream is = this.getClass().getResourceAsStream("/db.properties");
+		Properties prop = new Properties();
+		try {
+			prop.load(is);
+			setDriveClassName(prop.getProperty(dbID + ".driverClassName"));
+			setDbURL(prop.getProperty(dbID + ".url"));
+			setDbusername(prop.getProperty(dbID + ".username"));
+			setDbpassword(prop.getProperty(dbID + ".password"));
+		} catch (IOException e) {
+			throw new RuntimeException("[" + this.getClass().getName() + "]加载数据库参数文件异常！" + e.getMessage());
+		}
+	}
+	/**
+	 * 获取数据库连接
+	 * @return
+	 */
+	Connection getConn() {
+		Connection conn = null;
+		try {
+			Class.forName(getDriveClassName());
+			conn = DriverManager.getConnection(getDbURL(), getDbusername(), getDbpassword());
+		} catch (ClassNotFoundException e) {
+			throw new RuntimeException("[" + this.getClass().getName() + "]找不到驱动类！" + e.getMessage());
+		} catch (SQLException e) {
+			throw new RuntimeException("[" + this.getClass().getName() + "]数据库连接失败！" + e.getMessage());
+		}
+		return conn;
+	}
 	/**
 	 * 断开数据库连接
 	 * @param conn
@@ -417,8 +457,12 @@ public abstract class BaseDBUtil {
         try {
             if (rs != null)
                 rs.close();
-            if (pre != null)
-                pre.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        try {
+        	if (pre != null)
+        		pre.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -435,35 +479,32 @@ public abstract class BaseDBUtil {
         int index = sql.length() - sql.replace("?", "").length();
         return conn == null || index != arguments.size();   //数据库连接无效或参数个数不匹配
     }
-    
-	public String getIp() {
-		return ip;
+	public String getDriveClassName() {
+		return driveClassName;
 	}
-	public void setIp(String ip) {
-		this.ip = ip;
+	public void setDriveClassName(String driveClassName) {
+		if (driveClassName == null || driveClassName.isEmpty()) throw new RuntimeException("[" + this.getClass().getName() + "]驱动类名不能为空！");
+		this.driveClassName = driveClassName;
 	}
-	public Integer getPort() {
-		return port;
+	public String getDbURL() {
+		return dbURL;
 	}
-	public void setPort(int port) {
-		this.port = port;
+	public void setDbURL(String dbURL) {
+		if (dbURL == null || dbURL.isEmpty()) throw new RuntimeException("[" + this.getClass().getName() + "]数据库连接url不能为空！");
+		this.dbURL = dbURL;
 	}
-	public String getDbname() {
-		return dbname;
+	public String getDbusername() {
+		return dbusername;
 	}
-	public void setDbname(String dbname) {
-		this.dbname = dbname;
+	public void setDbusername(String dbusername) {
+		if (dbusername == null || dbusername.isEmpty()) throw new RuntimeException("[" + this.getClass().getName() + "]数据库用户名不能为空！");
+		this.dbusername = dbusername;
 	}
-	public String getUsername() {
-		return username;
+	public String getDbpassword() {
+		return dbpassword;
 	}
-	public void setUsername(String username) {
-		this.username = username;
-	}
-	public String getPassword() {
-		return password;
-	}
-	public void setPassword(String password) {
-		this.password = password;
+	public void setDbpassword(String dbpassword) {
+		if (dbpassword == null || dbpassword.isEmpty()) throw new RuntimeException("[" + this.getClass().getName() + "]数据库密码不能为空！");
+		this.dbpassword = dbpassword;
 	}
 }
