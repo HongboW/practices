@@ -59,6 +59,11 @@ public abstract class BaseDBUtil {
 	        this.setDataType(dataType);
 	        this.setVal(val);
 	    }
+	    public ArgumentDomain (int position, int jdbcType, Object val) {
+	        this.setPosition(position);
+	        this.setJdbcType(jdbcType);
+	        this.setVal(val);
+	    }
 	    public String getName() {
 	        return name;
 	    }
@@ -252,6 +257,7 @@ public abstract class BaseDBUtil {
             result.addAll(result2List(rs, true));
         } catch (SQLException e) {
             System.err.println("SQL编译异常！");
+            e.printStackTrace();
         } finally {
             closeAll(rs, pre);
         }
@@ -307,13 +313,16 @@ public abstract class BaseDBUtil {
                 if (sqlNotBegin(conn, sql, list)) continue; //参数个数检查
                 for (ArgumentDomain argument : list) {
                     pre.setObject(argument.getPosition(), (null == argument.getVal() || "null".equalsIgnoreCase(argument.getVal().toString())) ? "" : argument.getVal(), argument.getJdbcType());    //传值
+//                    System.out.println("position:"+argument.getPosition()+"value:"+argument.getVal()+"jdbctype:"+argument.getJdbcType());
                 }
                 pre.addBatch();
             }
+            System.out.println(sql);
             int[] rows = pre.executeBatch();
             sqlRowCount = rows.length;
         } catch (SQLException e) {
             //System.err.println("SQL编译异常:" + e.getMessage());
+        	System.err.println(e.getSQLState());
             throw e;
         } catch (Exception e) {
         	//System.err.println("SQL参数装配异常：" + e.getMessage());
